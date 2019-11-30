@@ -1,16 +1,17 @@
+// jquery.email-autocomplete.min.js
 /*
- *  email-autocomplete - 0.1.3(ak-fork)
+ *  email-autocomplete - 0.1.3(ak-fork, 30-11-2019)
  *  jQuery plugin that displays in-place autocomplete suggestions for email input fields.
  *  
  *
  *  Made by Low Yong Zhen <yz@stargate.io> 
  *
  *
- *  Modified by Aleksey Kuznietsov 29.11.2019.
+ *  Modified by Aleksey Kuznietsov 29-30.11.2019.
+ *  NOTE: this code seems doesn't works on IE and Edge. So it's only for Mozilla-type browsers.
  */
-"use strict";
-
 (function ($, window, document, undefined) {
+  "use strict";
 
   var pluginName = "emailautocomplete",
       defaults = {
@@ -20,18 +21,36 @@
       "gmail.com",
       "googlemail.com",
       "yahoo.com",
+      // "yahoo.ca", // odd :)
       "yahoo.co.uk",
+      "yahoo.co.in",
+      "yahoo.co.th",
+      "yahoo.co.jp",
+      "yahoo.ie",
+      // "yahoo.it", // odd :)
       "yahoo.fr",
       "yahoo.de",
-      "yahoo.mx",
-      "rocketmail.com",
+      // "yahoo.dk", // odd :)
+      "yahoo.es",
+      "yahoo.pl",
+      // "yahoo.com.au",
+      // "yahoo.com.ar",
+      // "yahoo.com.br",
+      // "yahoo.com.mx",
+      // "yahoo.com.ph",
       "hotmail.com",
       "hotmail.co.uk",
+      "hotmail.de",
+      "hotmail.fr",
+      "hotmail.it",
       "hotmail.ru",
       "outlook.com",
       "outlook.es",
       "live.com",
+      "live.co.uk",
+      "live.fr",
       "facebook.com",
+      "rocketmail.com",
       "icloud.com",
       "aol.com",
       "mail.com",
@@ -60,6 +79,7 @@
       "zohomail.com",
       "protonmail.com",
       "hushmail.com",
+      "rediffmail.com",
       "tutanota.com",
       "topmail.com",
       "charter.net",	// spectrum
@@ -69,12 +89,21 @@
       "zoominternet.net",
       "cox.net", // after comcast
       "usa.net",
-      "yandex.com",		// shit
+      "ymail.com",
+      "sky.com",
+      "laposte.net",
 
 /* Ukraine + Europe */
+      "wanadoo.fr",		// FR
+      "orange.fr",		// FR
+      "free.fr",		// FR
+      "neuf.fr",		// FR
+      "voila.fr",		// FR
+
+      "yandex.ru",		// UA-RU
       "yandex.ua",		// UA
       "yandex.by",		// BY
-      "yandex.ru",		// UA-RU
+      "yandex.com",		// shit
       "ukr.net",		// UA
       "meta.ua",		// UA
       "online.ua",		// UA
@@ -102,20 +131,39 @@
       "bigmir.net",		// UA
       "gala.net",		// UA
       "tut.by",			// BY
+
+      "skynet.be",		// BE
+      "telenet.be",		// BE
+      "planet.nl",		// NL
+      "zonnet.nl",		// NL
+      "home.nl",		// NL
+      "chello.nl",		// NL
+
+      "shaw.ca",		// CA
       "seznam.cz",		// CZ
       "poczta.fm",		// PL
       "alice.it",		// IT
       "superdada.it",		// IT
       "katamail.com",		// IT
+      "libero.it",		// IT
       "tiscali.it",		// IT
+      "tin.it",			// IT
       "freenet.de",		// DE
       "t-online.de",		// DE
       "web.de",			// DE
+      "arcor.de",		// DE
       "freemail.hu",		// HU
+
+      "terra.com.br",		// BR
+
+      "bigpond.com",		// after "bigmir"
+      "qq.com",
+      "ntlworld.com",
+      "centurytel.net",
     ],
   };
 
-  function EmailAutocomplete(elem, options) {
+  function emailAutocomplete(elem, options) {
     var me = this;
 
     me.$field = $(elem);
@@ -125,8 +173,53 @@
     me.init();
   }
 
-  EmailAutocomplete.prototype = {
-    init: function () {
+  function copyEacCss($target, $source) {
+    // AK TODO: we can copy this all as an array. This is quick shitcoding.
+    var props = [
+        "box-sizing", //"content-box" originally
+        "-webkit-box-sizing", // AK: I have no idea if it's required, but it works.
+        "-moz-box-sizing", // same here
+
+        "padding", // in Chrome this could be enough w/o all dimensions. In FireFox we should copy each value.
+        "paddingTop",
+        "paddingRight",
+        "paddingBottom",
+        "paddingLeft",
+
+        "margin",
+        "marginTop",
+        "marginRight",
+        "marginBottom",
+        "marginLeft",
+
+        "border",
+        "borderTop",
+        "borderRight",
+        "borderBottom",
+        "borderLeft",
+
+        "font", // in Chrome this could be enough w/o Family and Weight. In FireFox we should copy each value.
+        "fontSize",
+        "fontFamily",
+        "fontWeight",
+
+        "lineHeight",
+        "letterSpacing",
+
+        "display",
+      ];
+
+    for (var i=props.length-1; i>=0; --i)
+      $target.css(props[i], $source.css(props[i]));
+
+    $target.css({
+        "border-color": "transparent",
+        position: "absolute",
+      });
+  };
+
+  emailAutocomplete.prototype = {
+    init: function() {
       var me = this;
 
       //shim indexOf
@@ -134,64 +227,38 @@
         me.doIndexOf();
       }
 
-      //this will be calculated upon keyup
-      me.fieldLeftOffset = null;
-
-      //wrap our field
-      me.$field.wrap($('<span class="eac-input-wrap' +
-
-        // AK 29.11.2019 KLUDGE: reproduce form-control behaviour in Bootstrap4
-        (me.$field.hasClass("form-control") ? " form-control" : "") +'" />').css({
-            display: me.$field.css("display"),
-            position: me.$field.css("position") === "static" ? "relative" : me.$field.css("position"),
-            fontSize: me.$field.css("fontSize"),
-            // required if the <input> has "form-control" class, but will not be interfere in any case.
-            padding: 0,
-            margin: 0,
-          }));
-
-      //create container to test width of current val
-      me.$cval = $("<span class='eac-cval' />").css({
-        visibility: "hidden",
-        position: "absolute",
+      // create container to test width of current val
+      me.$cval = $("<span />").css({
         display: "inline-block",
-        fontFamily: me.$field.css("fontFamily"),
-        fontWeight: me.$field.css("fontWeight"),
-        letterSpacing: me.$field.css("letterSpacing")
+        visibility: "hidden",
       }).insertAfter(me.$field);
+      copyEacCss(me.$cval, me.$field);
 
-      //create the suggestion overlay
-      /* touchstart jquery 1.7+ */
-      var heightPad = (me.$field.outerHeight(true) - me.$field.height()) / 2; //padding+border
+      // create the suggestion overlay
       me.$suggOverlay = $("<span "+(me.options.suggClass ? 'class="' + me.options.suggClass : 'style="color:'+me.options.suggColor) + '" />').css({ // AK 29.11.2019
-        display: "block",
-        "box-sizing": "content-box", //standardize
-        lineHeight: me.$field.css("lineHeight"),
-        paddingTop: heightPad + "px",
-        paddingBottom: heightPad + "px",
-        fontFamily: me.$field.css("fontFamily"),
-        fontWeight: me.$field.css("fontWeight"),
-        letterSpacing: me.$field.css("letterSpacing"),
-        position: "absolute",
+        display: me.$field.css("display"), // "block" originally,
         top: 0,
-        left: 0
+        left: 0,
+        "z-index": 99999, // AK 30.11.2019: much better solution is to find out the zIndex of $field and set up $field.zIndex+1, but what if we use it in some popup window?
       }).insertAfter(me.$field);
+      copyEacCss(me.$suggOverlay, me.$field);
 
       //bind events and handlers
-      me.$field.on("keyup.eac", $.proxy(me.displaySuggestion, me));
+      me.$field.on("keyup", $.proxy(me.displaySuggestion, me));
 
-      me.$field.on("blur.eac", $.proxy(me.autocomplete, me));
+      me.$field.on("blur", $.proxy(me.autocomplete, me));
 
-      me.$field.on("keydown.eac", $.proxy(function(e){
-        if(e.which === 39 || e.which === 9){
+      me.$field.on("keydown", $.proxy(function(e) {
+        if(e.which === 39 || e.which === 9) {
           me.autocomplete();
         }
       }, me));
 
-      me.$suggOverlay.on("mousedown.eac touchstart.eac", $.proxy(me.autocomplete, me));
+      /* touchstart jquery 1.7+ */
+      me.$suggOverlay.on("mousedown touchstart", $.proxy(me.autocomplete, me));
     },
 
-    suggest: function (str) {
+    suggest: function(str) {
       var str_arr = str.split("@");
       if (str_arr.length > 1) {
         str = str_arr.pop();
@@ -202,52 +269,53 @@
         return "";
       }
 
-      var match = this._domains.filter(function (domain) {
+      var match = this._domains.filter(function(domain) {
         return domain.indexOf(str) === 0;
       }).shift() || "";
 
       return match.replace(str, "");
     },
 
-    autocomplete: function () {
-      if(typeof this.suggestion === "undefined" || this.suggestion.length < 1) {
-        return false;
-      }
-      this.$field.val(this.val + this.suggestion);
-      this.$suggOverlay.text("");
-      this.$cval.text("");
-    },
-
     /**
      * Displays the suggestion, handler for field keyup event
      */
-    displaySuggestion: function (e) {
+    displaySuggestion: function(e) {
       var me = this;
 
+      // Both val & suggestion will be reused in autocomplete()
       me.val = me.$field.val();
       me.suggestion = me.suggest(me.val);
 
-      if (!me.suggestion.length) {
-        me.$suggOverlay.text("");
-      }else {
+      if (me.suggestion)
         e.preventDefault();
-      }
 
       //update with new suggestion
       me.$suggOverlay.text(me.suggestion);
       me.$cval.text(me.val);
 
-      // get input padding, border and margin to offset text
-      if (me.fieldLeftOffset === null) {
-        me.fieldLeftOffset = (me.$field.outerWidth(true) - me.$field.width()) / 2;
-      }
-
-      //find width of current input val so we can offset the suggestion text
-      var cvalWidth = me.$cval.width();
-
+      // find width of current input val so we can offset the suggestion text
+      var cvalWidth = me.$cval.width(); // calculated width of suggested text. (AFTER SETTING THE TEXT!)
       if (me.$field.outerWidth() > cvalWidth) {
-        //offset our suggestion container
-        me.$suggOverlay.css("left", me.fieldLeftOffset + cvalWidth + "px");
+        /* AK 30.11.2019:
+           Вот эти хаки по десятым долям пиксела — это конечно маразм. Но я не знаю как это решить правильно.
+           Думаю, что это финальный сдвиг зависит от высоты, которая по-разному вычисляется в разных браузерах, если height — вычисляемое значене типа calc(1.5em + .5rem + 2px);
+           Но это не точно. По логике высота не должна влиять на top/left-позициию Но точное копирование не даёт резултата. Точную причину я не знаю и выяснить пока не могу, вообще нет времени.
+           Единственное что могу сделать быстро — установить более менее приемлемые сдвиги, которое нормально выглядят и в Chrome/Opera и в FF.
+           И да, в Edge/IE эта штука не работает совсем. Причина тоже не выяснена. Выяснишь — дополни.
+
+           UPD. ещё можно попробовать округлять top/left, может поможет?
+                Нет, не помогает. В Firefox отрисовка действительно происходит по долям пикселов. ceil() это много, floor() — мало. Пока оставим так.
+         */
+        me.$suggOverlay.css("top", (me.$field.position().top + (me.$field.height() % 2 == 0 /*height of $field, even or odd?*/ ? 1 : 0.3/* firefox up to 1, chrome&opera 0 */)) + "px");
+        me.$suggOverlay.css("left", (me.$field.position().left + 0.6/*firefox*/) + cvalWidth + "px");
+      }
+    },
+
+    autocomplete: function() {
+      if (this.suggestion) {
+        this.$field.val(this.val + this.suggestion);
+        this.$suggOverlay.text("");
+        this.$cval.text("");
       }
     },
 
@@ -271,13 +339,13 @@
           }
 
           if (fromIndex < 0) {
-            fromIndex += length;
+            fromIndex+= length;
             if (fromIndex < 0) {
               fromIndex = 0;
             }
           }
 
-          for (;fromIndex < length; fromIndex++) {
+          for (;fromIndex < length; ++fromIndex) {
             if (this[fromIndex] === searchElement) {
               return fromIndex;
             }
@@ -291,13 +359,12 @@
   $.fn[pluginName] = function(options) {
     return this.each(function() {
       if (!$.data(this, "yz_" + pluginName)) {
-        $.data(this, "yz_" + pluginName, new EmailAutocomplete(this, options));
+        $.data(this, "yz_" + pluginName, new emailAutocomplete(this, options));
       }
     });
   };
 
 })(jQuery, window, document);
-
 
 /*
 function autoCompleteEmails() { // make all email fields auto-completeable + lowercase
