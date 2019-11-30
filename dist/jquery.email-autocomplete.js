@@ -1,86 +1,194 @@
 /*
- *  email-autocomplete - 0.1.3
+ *  email-autocomplete - 0.1.3(ak-fork)
  *  jQuery plugin that displays in-place autocomplete suggestions for email input fields.
  *  
  *
  *  Made by Low Yong Zhen <yz@stargate.io> 
+ *
+ *
+ *  Modified by Aleksey Kuznietsov 29.11.2019.
  */
 "use strict";
 
 (function ($, window, document, undefined) {
 
-  var pluginName = "emailautocomplete";
-  var defaults = {
-    suggClass: "eac-sugg",
-    domains: ["yahoo.com" ,"hotmail.com" ,"gmail.com" ,"me.com" ,"aol.com" ,"mac.com" ,"live.com" ,"comcast.net" ,"googlemail.com" ,"msn.com" ,"hotmail.co.uk" ,"yahoo.co.uk" ,"facebook.com" ,"verizon.net" ,"sbcglobal.net" ,"att.net" ,"gmx.com" ,"outlook.com" ,"icloud.com"]
+  var pluginName = "emailautocomplete",
+      defaults = {
+    suggClass: "", // "eac-sugg", // AK original classname, but I prefer to use just simple color
+    suggColor: "#ccc", // used if suggClass not specified
+    domains: [
+      "gmail.com",
+      "googlemail.com",
+      "yahoo.com",
+      "yahoo.co.uk",
+      "yahoo.fr",
+      "yahoo.de",
+      "yahoo.mx",
+      "rocketmail.com",
+      "hotmail.com",
+      "hotmail.co.uk",
+      "hotmail.ru",
+      "outlook.com",
+      "outlook.es",
+      "live.com",
+      "facebook.com",
+      "icloud.com",
+      "aol.com",
+      "mail.com",
+      "mail.ru",		// UA-RU
+      "mail.ua",		// UA
+      "mail.be",		// BE
+      "mail.fr",		// FR
+      "mail.de",		// DE
+      "msn.com",
+      "mac.com",
+      "me.com",
+      "comcast.net",
+      "sbcglobal.net",
+      "verizon.net",
+      "att.net",
+      "bellsouth.net",
+      "peoplepc.com",   // earthlink
+      "mindspring.com", // earthlink
+      "earthlink.net",  // earthlink
+      "gmx.com",
+      "inbox.com",
+      "inbox.ru",
+      "pobox.com",
+      "juno.com",
+      "lycos.com",
+      "zohomail.com",
+      "protonmail.com",
+      "hushmail.com",
+      "tutanota.com",
+      "topmail.com",
+      "charter.net",	// spectrum
+      "roadrunner.com",	// spectrum
+      "optonline.net",	// optimum
+      "prodigy.net",	// at&t
+      "zoominternet.net",
+      "cox.net", // after comcast
+      "usa.net",
+      "yandex.com",		// shit
+
+/* Ukraine + Europe */
+      "yandex.ua",		// UA
+      "yandex.by",		// BY
+      "yandex.ru",		// UA-RU
+      "ukr.net",		// UA
+      "meta.ua",		// UA
+      "online.ua",		// UA
+      "i.ua",			// UA
+      "email.ua",		// UA
+      "email.it",		// IT
+      "e-mail.ua",		// UA
+      "ua.fm",			// UA
+      "football.ua",		// UA
+      "3g.ua",			// UA
+      "tyt.in.ua",		// UA
+      "voliacable.com",		// UA
+      "breezein.net",		// UA
+      "rambler.ru",		// UA-RU
+      "list.ru",		// UA-RU
+      "bk.ru",			// UA-RU
+      "qip.ru",			// UA-RU
+      "pisem.net",		// UA-RU
+      "webmail.ru",		// UA-RU
+      "newmail.ru",		// UA-RU
+      "nm.ru",			// UA-RU
+      "pop3.ru",		// UA-RU
+      "smtp.ru",		// UA-RU
+      "pochta.ru",		// UA-RU
+      "bigmir.net",		// UA
+      "gala.net",		// UA
+      "tut.by",			// BY
+      "seznam.cz",		// CZ
+      "poczta.fm",		// PL
+      "alice.it",		// IT
+      "superdada.it",		// IT
+      "katamail.com",		// IT
+      "tiscali.it",		// IT
+      "freenet.de",		// DE
+      "t-online.de",		// DE
+      "web.de",			// DE
+      "freemail.hu",		// HU
+    ],
   };
 
   function EmailAutocomplete(elem, options) {
-    this.$field = $(elem);
-    this.options = $.extend(true, {}, defaults, options); //we want deep extend
-    this._defaults = defaults;
-    this._domains = this.options.domains;
-    this.init();
+    var me = this;
+
+    me.$field = $(elem);
+    me.options = $.extend(true, {}, defaults, options); //we want deep extend
+    me._defaults = defaults;
+    me._domains = me.options.domains;
+    me.init();
   }
 
   EmailAutocomplete.prototype = {
     init: function () {
+      var me = this;
 
       //shim indexOf
       if (!Array.prototype.indexOf) {
-        this.doIndexOf();
+        me.doIndexOf();
       }
 
       //this will be calculated upon keyup
-      this.fieldLeftOffset = null;
+      me.fieldLeftOffset = null;
 
       //wrap our field
-      var $wrap = $("<div class='eac-input-wrap' />").css({
-        display: this.$field.css("display"),
-        position: this.$field.css("position") === 'static' ? 'relative' : this.$field.css("position"),
-        fontSize: this.$field.css("fontSize")
-      });
-      this.$field.wrap($wrap);
+      me.$field.wrap($('<span class="eac-input-wrap' +
+
+        // AK 29.11.2019 KLUDGE: reproduce form-control behaviour in Bootstrap4
+        (me.$field.hasClass("form-control") ? " form-control" : "") +'" />').css({
+            display: me.$field.css("display"),
+            position: me.$field.css("position") === "static" ? "relative" : me.$field.css("position"),
+            fontSize: me.$field.css("fontSize"),
+            // required if the <input> has "form-control" class, but will not be interfere in any case.
+            padding: 0,
+            margin: 0,
+          }));
 
       //create container to test width of current val
-      this.$cval = $("<span class='eac-cval' />").css({
+      me.$cval = $("<span class='eac-cval' />").css({
         visibility: "hidden",
         position: "absolute",
         display: "inline-block",
-        fontFamily: this.$field.css("fontFamily"),
-        fontWeight: this.$field.css("fontWeight"),
-        letterSpacing: this.$field.css("letterSpacing")
-      }).insertAfter(this.$field);
+        fontFamily: me.$field.css("fontFamily"),
+        fontWeight: me.$field.css("fontWeight"),
+        letterSpacing: me.$field.css("letterSpacing")
+      }).insertAfter(me.$field);
 
       //create the suggestion overlay
       /* touchstart jquery 1.7+ */
-      var heightPad = (this.$field.outerHeight(true) - this.$field.height()) / 2; //padding+border
-      this.$suggOverlay = $("<span class='"+this.options.suggClass+"' />").css({
+      var heightPad = (me.$field.outerHeight(true) - me.$field.height()) / 2; //padding+border
+      me.$suggOverlay = $("<span "+(me.options.suggClass ? 'class="' + me.options.suggClass : 'style="color:'+me.options.suggColor) + '" />').css({ // AK 29.11.2019
         display: "block",
         "box-sizing": "content-box", //standardize
-        lineHeight: this.$field.css('lineHeight'),
+        lineHeight: me.$field.css("lineHeight"),
         paddingTop: heightPad + "px",
         paddingBottom: heightPad + "px",
-        fontFamily: this.$field.css("fontFamily"),
-        fontWeight: this.$field.css("fontWeight"),
-        letterSpacing: this.$field.css("letterSpacing"),
+        fontFamily: me.$field.css("fontFamily"),
+        fontWeight: me.$field.css("fontWeight"),
+        letterSpacing: me.$field.css("letterSpacing"),
         position: "absolute",
         top: 0,
         left: 0
-      }).insertAfter(this.$field);
+      }).insertAfter(me.$field);
 
       //bind events and handlers
-      this.$field.on("keyup.eac", $.proxy(this.displaySuggestion, this));
+      me.$field.on("keyup.eac", $.proxy(me.displaySuggestion, me));
 
-      this.$field.on("blur.eac", $.proxy(this.autocomplete, this));
+      me.$field.on("blur.eac", $.proxy(me.autocomplete, me));
 
-      this.$field.on("keydown.eac", $.proxy(function(e){
+      me.$field.on("keydown.eac", $.proxy(function(e){
         if(e.which === 39 || e.which === 9){
-          this.autocomplete();
+          me.autocomplete();
         }
-      }, this));
+      }, me));
 
-      this.$suggOverlay.on("mousedown.eac touchstart.eac", $.proxy(this.autocomplete, this));
+      me.$suggOverlay.on("mousedown.eac touchstart.eac", $.proxy(me.autocomplete, me));
     },
 
     suggest: function (str) {
@@ -90,7 +198,7 @@
         if (!str.length) {
           return "";
         }
-      } else {
+      }else {
         return "";
       }
 
@@ -102,7 +210,7 @@
     },
 
     autocomplete: function () {
-      if(typeof this.suggestion === "undefined" || this.suggestion.length < 1){
+      if(typeof this.suggestion === "undefined" || this.suggestion.length < 1) {
         return false;
       }
       this.$field.val(this.val + this.suggestion);
@@ -114,30 +222,32 @@
      * Displays the suggestion, handler for field keyup event
      */
     displaySuggestion: function (e) {
-      this.val = this.$field.val();
-      this.suggestion = this.suggest(this.val);
+      var me = this;
 
-      if (!this.suggestion.length) {
-        this.$suggOverlay.text("");
-      } else {
+      me.val = me.$field.val();
+      me.suggestion = me.suggest(me.val);
+
+      if (!me.suggestion.length) {
+        me.$suggOverlay.text("");
+      }else {
         e.preventDefault();
       }
 
       //update with new suggestion
-      this.$suggOverlay.text(this.suggestion);
-      this.$cval.text(this.val);
+      me.$suggOverlay.text(me.suggestion);
+      me.$cval.text(me.val);
 
       // get input padding, border and margin to offset text
-      if(this.fieldLeftOffset === null){
-        this.fieldLeftOffset = (this.$field.outerWidth(true) - this.$field.width()) / 2;
+      if (me.fieldLeftOffset === null) {
+        me.fieldLeftOffset = (me.$field.outerWidth(true) - me.$field.width()) / 2;
       }
 
       //find width of current input val so we can offset the suggestion text
-      var cvalWidth = this.$cval.width();
+      var cvalWidth = me.$cval.width();
 
-      if(this.$field.outerWidth() > cvalWidth){
+      if (me.$field.outerWidth() > cvalWidth) {
         //offset our suggestion container
-        this.$suggOverlay.css('left', this.fieldLeftOffset + cvalWidth + "px");
+        me.$suggOverlay.css("left", me.fieldLeftOffset + cvalWidth + "px");
       }
     },
 
@@ -145,7 +255,7 @@
      * indexof polyfill
      * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/indexOf#Polyfill
     */
-    doIndexOf: function(){
+    doIndexOf: function() {
 
         Array.prototype.indexOf = function (searchElement, fromIndex) {
           if ( this === undefined || this === null ) {
@@ -178,8 +288,8 @@
       }
   };
 
-  $.fn[pluginName] = function (options) {
-    return this.each(function () {
+  $.fn[pluginName] = function(options) {
+    return this.each(function() {
       if (!$.data(this, "yz_" + pluginName)) {
         $.data(this, "yz_" + pluginName, new EmailAutocomplete(this, options));
       }
@@ -187,3 +297,16 @@
   };
 
 })(jQuery, window, document);
+
+
+/*
+function autoCompleteEmails() { // make all email fields auto-completeable + lowercase
+  $('input[name="email"]').each(function() {
+    $(this).emailautocomplete({ domains: ["example.com"] });
+//
+//    if (makeLowercase) // better do this with CSS, but if modifiation of CSS is impossible for any reason -- use makeLowercase.
+//      $(this).css("text-transform", "lowercase");
+//
+  });
+}
+*/
