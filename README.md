@@ -1,5 +1,17 @@
 # jquery.email-autocomplete.js
 
+This is forked & modified code by Aleksey Kuznietsov (aka UtilMind) 29.11.2019.
+
+Fixes are following:
+  1. Advanced list of email domains. Fits most common free email providers in USA + all Ukrainian/Russian services + some European.
+  2. Added "suggColor" option to specify the color of suggested text without CSS. (Hey, it's too simple to bring 1 more style to all CSS's of my projects! I prefer just 1 inline color option.)
+  3. (Fix for Bootstrap4) The wrapper should have "form-control" class if the &lt;input&gt; has "form-control". Otherwise the input control will not have width 100% (and other behaviors of "form-control" style).
+  This is kludge, I could think about better and more universal fix, but it works for me as is. So I'm leaving it.
+  
+Original description was following:
+
+<hr />
+
 > A jQuery plugin that suggests and autocompletes the domain whenever your users type in an email address field.
 
 [![Build Status](https://travis-ci.org/yongzhenlow/email-autocomplete.svg?branch=master)](https://travis-ci.org/yongzhenlow/email-autocomplete)
