@@ -1,6 +1,7 @@
+// jq.email-autocomplete.js
 // jquery.email-autocomplete.min.js
 /*
- *  email-autocomplete - 0.1.3(ak-fork, 30-11-2019)
+ *  email-autocomplete - 0.1.3(ak-fork, 1-12-2019)
  *  jQuery plugin that displays in-place autocomplete suggestions for email input fields.
  *  
  *
@@ -204,45 +205,61 @@
 
         "lineHeight",
         "letterSpacing",
+        "textAlign",
         "wordSpacing", // odd?
         "textIndent", // odd?
         "textSizeAdjust", // odd?
-
-        "display",
       ];
 
     for (var i=props.length-1; i>=0; --i)
       $target.css(props[i], $source.css(props[i]));
-
-    $target.css({
-        borderColor: "transparent",
-        position: "absolute",
-      });
   };
 
   emailAutocomplete.prototype = {
     init: function() {
-      var me = this;
+      var me = this,
+          textAlign = me.$field.css("textAlign");
+
+      if (textAlign == "center" || textAlign == "right") {
+        return; // this doesn't works with centered texts for now. Left-aligned only. TODO: make proper positioning.
+      }
 
       //shim indexOf
       if (!Array.prototype.indexOf) {
         me.doIndexOf();
       }
 
-
       // create container to test width of current val
       me.$cval = $("<span />").css({
+        position: "absolute",
         visibility: "hidden",
+        top: -999, // this will hide an element even if some weird CSS will enable visibility.
+        display: "block",
       }).insertAfter(me.$field);
       copyEacCss(me.$cval, me.$field);
 
-      // create the suggestion overlay
-      me.$suggOverlay = $("<span "+(me.options.suggClass ? 'class="' + me.options.suggClass : 'style="color:'+me.options.suggColor) + '" />').css({ // AK 29.11.2019
+      // Create the suggestion overlay.
+      // In most cases we don't need the wrapper over me.$suggOverlay. But we should vertically center the text on the box with the same height, to avoid extra-shifting.
+      me.$suggWrapper = $("<span />").insertAfter(me.$field);
+      copyEacCss(me.$suggWrapper, me.$field);
+      me.$suggWrapper.css({ // after copying the field CSS
+        position: "absolute",
+        display: "table",
+        "border-color": "transparent",
         top: 0,
         left: 0,
-        "z-index": 99999, // AK 30.11.2019: much better solution is to find out the zIndex of $field and set up $field.zIndex+1, but what if we use it in some popup window?
-      }).insertAfter(me.$field);
-      copyEacCss(me.$suggOverlay, me.$field);
+        "z-index": 99999,
+      });
+
+      me.$suggOverlay = $("<span "+(me.options.suggClass ? 'class="' + me.options.suggClass : 'style="color:'+me.options.suggColor) + '" />').css({ // AK 29.11.2019
+        display: "table-cell",
+        verticalAlign: "middle",
+        margin: 0,
+        padding: 0,
+        border: 0,
+      });
+      me.$suggWrapper.append(me.$suggOverlay);
+
 
       //bind events and handlers
       me.$field.on("keyup", $.proxy(me.displaySuggestion, me));
@@ -250,9 +267,16 @@
       me.$field.on("blur", $.proxy(me.autocomplete, me));
 
       me.$field.on("keydown", $.proxy(function(e) {
-        var key = e.keyCode || e.which;
-        if (((key > 37) && (key < 41)) || (key == 9)) // top-right-bottom & tab
-          me.autocomplete();
+        if (me.suggestion) {
+          var key = e.keyCode || e.which;
+          if (((key > 37) && (key < 41)) || (key == 9) || (key == 13)) { // top-right-bottom & tab
+            if (key == 13) {
+              e.stopPropagation();
+              e.preventDefault();
+            }
+            me.autocomplete();
+          }
+        }
       }, me));
 
       /* touchstart jquery 1.7+ */
@@ -270,6 +294,7 @@
         return "";
       }
 
+      str = str.toLowerCase();
       var match = this._domains.filter(function(domain) {
         return domain.indexOf(str) === 0;
       }).shift() || "";
@@ -297,8 +322,12 @@
       // find width of current input val so we can offset the suggestion text
       var cvalWidth = me.$cval.width(); // calculated width of suggested text. (AFTER SETTING THE TEXT!)
       if (me.$field.outerWidth() > cvalWidth) {
-        me.$suggOverlay.css("top", me.$field.position().top);
-        me.$suggOverlay.css("left", me.$field.position().left + cvalWidth);
+        // TODO: try to calculate position when text in e <input> is horizontall centered!
+        //me.$cval.width(me.$field.width());
+
+        me.$suggWrapper.css("top", me.$field.position().top + 1); // 1px is wrong, but it looks good in most cases
+        me.$suggWrapper.css("left", me.$field.position().left + cvalWidth + 1); // 1px horizontal shift looks even better than no shift
+        me.$suggWrapper.height(me.$field.height());
       }
     },
 
