@@ -53,6 +53,7 @@
       "rocketmail.com",
       "icloud.com",
       "aol.com",
+      "aim.com", // aol service
       "mail.com",
       "mail.ru",		// UA-RU
       "mail.ua",		// UA
