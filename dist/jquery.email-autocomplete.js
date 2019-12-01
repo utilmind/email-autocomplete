@@ -89,7 +89,6 @@
       "prodigy.net",	// at&t
       "zoominternet.net",
       "cox.net", // after comcast
-      "usa.net",
       "ymail.com",
       "sky.com",
       "laposte.net",
@@ -161,6 +160,7 @@
       "qq.com",
       "ntlworld.com",
       "centurytel.net",
+      "usa.net",		// below ukr.net
     ],
   };
 
@@ -178,34 +178,35 @@
     // AK TODO: we can copy this all as an array. This is quick shitcoding.
     var props = [
         "box-sizing", //"content-box" originally
-        "-webkit-box-sizing", // AK: I have no idea if it's required, but it works.
-        "-moz-box-sizing", // same here
 
-        "padding", // in Chrome this could be enough w/o all dimensions. In FireFox we should copy each value.
+//        "padding", // in Chrome this could be enough w/o all dimensions. In FireFox we should copy each value.
         "paddingTop",
         "paddingRight",
         "paddingBottom",
         "paddingLeft",
 
-        "margin",
+//        "margin",
         "marginTop",
         "marginRight",
         "marginBottom",
         "marginLeft",
 
-        "border",
+//        "border",
         "borderTop",
         "borderRight",
         "borderBottom",
         "borderLeft",
 
-        "font", // in Chrome this could be enough w/o Family and Weight. In FireFox we should copy each value.
+//        "font", // in Chrome this could be enough w/o Family and Weight. In FireFox we should copy each value.
         "fontSize",
         "fontFamily",
         "fontWeight",
 
         "lineHeight",
         "letterSpacing",
+        "wordSpacing", // odd?
+        "textIndent", // odd?
+        "textSizeAdjust", // odd?
 
         "display",
       ];
@@ -214,7 +215,7 @@
       $target.css(props[i], $source.css(props[i]));
 
     $target.css({
-        "border-color": "transparent",
+        borderColor: "transparent",
         position: "absolute",
       });
   };
@@ -228,16 +229,15 @@
         me.doIndexOf();
       }
 
+
       // create container to test width of current val
       me.$cval = $("<span />").css({
-        display: "inline-block",
         visibility: "hidden",
       }).insertAfter(me.$field);
       copyEacCss(me.$cval, me.$field);
 
       // create the suggestion overlay
       me.$suggOverlay = $("<span "+(me.options.suggClass ? 'class="' + me.options.suggClass : 'style="color:'+me.options.suggColor) + '" />').css({ // AK 29.11.2019
-        display: me.$field.css("display"), // "block" originally,
         top: 0,
         left: 0,
         "z-index": 99999, // AK 30.11.2019: much better solution is to find out the zIndex of $field and set up $field.zIndex+1, but what if we use it in some popup window?
@@ -250,9 +250,9 @@
       me.$field.on("blur", $.proxy(me.autocomplete, me));
 
       me.$field.on("keydown", $.proxy(function(e) {
-        if(e.which === 39 || e.which === 9) {
+        var key = e.keyCode || e.which;
+        if (((key > 37) && (key < 41)) || (key == 9)) // top-right-bottom & tab
           me.autocomplete();
-        }
       }, me));
 
       /* touchstart jquery 1.7+ */
@@ -297,18 +297,8 @@
       // find width of current input val so we can offset the suggestion text
       var cvalWidth = me.$cval.width(); // calculated width of suggested text. (AFTER SETTING THE TEXT!)
       if (me.$field.outerWidth() > cvalWidth) {
-        /* AK 30.11.2019:
-           Вот эти хаки по десятым долям пиксела — это конечно маразм. Но я не знаю как это решить правильно.
-           Думаю, что это финальный сдвиг зависит от высоты, которая по-разному вычисляется в разных браузерах, если height — вычисляемое значене типа calc(1.5em + .5rem + 2px);
-           Но это не точно. По логике высота не должна влиять на top/left-позициию Но точное копирование не даёт резултата. Точную причину я не знаю и выяснить пока не могу, вообще нет времени.
-           Единственное что могу сделать быстро — установить более менее приемлемые сдвиги, которое нормально выглядят и в Chrome/Opera и в FF.
-           И да, в Edge/IE эта штука не работает совсем. Причина тоже не выяснена. Выяснишь — дополни.
-
-           UPD. ещё можно попробовать округлять top/left, может поможет?
-                Нет, не помогает. В Firefox отрисовка действительно происходит по долям пикселов. ceil() это много, floor() — мало. Пока оставим так.
-         */
-        me.$suggOverlay.css("top", (me.$field.position().top + (me.$field.height() % 2 == 0 /*height of $field, even or odd?*/ ? 1 : 0.3/* firefox up to 1, chrome&opera 0 */)) + "px");
-        me.$suggOverlay.css("left", (me.$field.position().left + 0.6/*firefox*/) + cvalWidth + "px");
+        me.$suggOverlay.css("top", me.$field.position().top);
+        me.$suggOverlay.css("left", me.$field.position().left + cvalWidth);
       }
     },
 
@@ -367,14 +357,10 @@
 
 })(jQuery, window, document);
 
-/*
-function autoCompleteEmails() { // make all email fields auto-completeable + lowercase
-  $('input[name="email"]').each(function() {
-    $(this).emailautocomplete({ domains: ["example.com"] });
-//
-//    if (makeLowercase) // better do this with CSS, but if modifiation of CSS is impossible for any reason -- use makeLowercase.
-//      $(this).css("text-transform", "lowercase");
-//
+
+doInit(function() { // make autocompleable all emails on page
+  if (typeof $ == "undefined") return 1;
+  $('input[type="email"], input.email-autocomplete').each(function() { // .email-autocomplete class should be specified in type="text" fields. Eg sign-in forms, field to provide either username or email.
+    $(this).emailautocomplete(); // { domains: ["example.com"] });
   });
-}
-*/
+}, 1);
