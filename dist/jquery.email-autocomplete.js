@@ -386,10 +386,11 @@
 
 })(jQuery, window, document);
 
-
+/*
 doInit(function() { // make autocompleable all emails on page
   if (typeof $ == "undefined") return 1;
   $('input[type="email"], input.email-autocomplete').each(function() { // .email-autocomplete class should be specified in type="text" fields. Eg sign-in forms, field to provide either username or email.
     $(this).emailautocomplete(); // { domains: ["example.com"] });
   });
 }, 1);
+*/
