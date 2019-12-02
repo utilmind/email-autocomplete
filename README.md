@@ -7,6 +7,9 @@ Fixes are following:
   2. Added "suggColor" option to specify the color of suggested text without CSS. (Hey, it's too simple to bring 1 more style to all CSS's of my projects! I prefer just 1 inline color option.)
   3. (Fix for Bootstrap4) The wrapper should have "form-control" class if the &lt;input&gt; has "form-control". Otherwise the input control will not have width 100% (and other behaviors of "form-control" style).
   This is kludge, I could think about better and more universal fix, but it works for me as is. So I'm leaving it.
+  4. Many other improvements.
+  
+<b>Live demo on JSFiddle: https://jsfiddle.net/utilmind/ytxLh4z3/</b>
   
 Original description was following:
 
