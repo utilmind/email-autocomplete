@@ -1,5 +1,5 @@
 /*
- *  email-autocomplete - 0.2 (forked from original code by by Low Yong Zhen  v0.1.3)
+ *  email-autocomplete - 0.2.1 (forked from original code by by Low Yong Zhen  v0.1.3)
  *  jQuery plugin that displays in-place autocomplete suggestions for email input fields.
  *
  *
@@ -8,9 +8,9 @@
  *
  *
  *  AK NOTES:
- *    1. this code seems doesn't works on IE and Edge. So it's only for Mozilla-type browsers.
+ *    1. this code seems doesn't works on IE (but works on Edge). So it's only for Mozilla-type browsers.
  *    2. since it doesn't works on IE anyway, I have dropped support of legacy functionality. ECMAScript 5 (released in 2009) required to run this code.
- *        
+ *
  */
 (function($, window, document, undefined) {
   "use strict";
@@ -19,8 +19,9 @@
       defaults = {
         suggClass: "", // "eac-sugg", // AK original classname, but I prefer to use just simple color
         suggColor: "#ccc", // used if suggClass not specified
-        topShift: 0.4, // px. Extra-shift is wrong, but may help to tweak vertical shifting in some special cases. Unfortunately, if the height is calculated with calc(...), the position of text in the real <input> and calculator may be different.
+        topShift: 0, // px. Extra-shift is wrong, but may help to tweak vertical shifting in some special cases. Unfortunately exact visible position of the text indide <input> and <div> can be different be shifted due to roundings.
         leftShift: 0, // px. AK: personally I prefer 1 extra-pixel between typed text and suggested. But you may set it to 0, so no gaps will be visbibe.
+        browserHacks: 1, // Edge requires 1 extra horizontal pixel for unknown reason.
         domains: [], // add custom domains here
         defDomains: [ // you may override default domains setting up the "defDomains".
           "gmail.com",
@@ -192,6 +193,14 @@
     me.$field = $(elem);
     me.options = $.extend(true, {}, defaults, options); // we want deep extend
     me._domains = me.options.domains.concat(me.options.defDomains); // merge 2 arrays with domains, default and custom lists
+
+    if (me.options.browserHacks) {
+      var userAgent = navigator.userAgent.toLowerCase();
+
+      if (userAgent.indexOf("edge") > 0) // Edge need +1 or +2px extra from left. Reason of such behavior not researched.
+        me.options.leftShift+= 2;
+    }
+
     me.init();
   }
 
@@ -211,33 +220,26 @@
         visibility: "hidden",
         top: -999, // this will hide an element even if some weird CSS will enable visibility.
         display: "block",
+        margin: 0, // we only calculate the width of the text. We don't need anything more. Set everything to 0 for sure.
+        padding: 0,
+        border: 0,
       }).insertAfter($field);
 
       // Create the suggestion overlay.
       me.$suggOverlay = $("<span "+(me.options.suggClass ? 'class="' + me.options.suggClass : 'style="color:'+me.options.suggColor) + '" />').css({ // AK 29.11.2019
-        display: "table-cell",
-        verticalAlign: "middle",
+        position: "absolute",
+        display: "block",
+        top: 0,
+        left: 0,
         margin: 0,
         padding: 0,
         border: 0,
+        zIndex: 9999,
+
         // ...uncomment code below to debug...
         // backgroundColor: "yellow",
         // opacity: 0.8,
-      });
-
-      // In most cases we don't need the wrapper over me.$suggOverlay. But we should vertically center the text on the box with the same height, to avoid extra-shifting.
-      me.$suggWrapper = $("<span />").css({
-        position: "absolute",
-        display: "table",
-        // borderColor: "transparent", // we losing the borderColor upon applying the borders. So make it "transparent" after we setup the borders.
-        top: 0,
-        left: 0,
-        zIndex: 99999,
-      }).insertAfter($field)
-        .append(me.$suggOverlay);
-
-      // apply styles that need to be applied
-      me.watchCSS();
+      }).insertAfter($field);
 
       // bind events and handlers
       $field.keyup($.proxy(me.displaySuggestion, me))
@@ -261,86 +263,50 @@
                   me.restoreAlign = null;
                 }
 
-                me.watchCSS();
+                me.$suggOverlay.css("visibility", "hidden");
                 me.autocomplete();
-                // change textAlign
               }, me))
 
             // AK: the craziest CSS's can modify the padding on focused controls. We must watch them.
             //     I'm adding the watching for the focused elements, but keep in mind, that there is a lot more pseudo-classes,
             //     which can completely change the look of the control, eg :hover, :enabled/:disabled, :read-only, :default, :required, :fullscreen, :valid/:invalid and so forth.
             .focus($.proxy(function(e) {
-                var textAlign = $field.css("textAlign");
+                var copyFont = function($target) {
+                      // AK TODO: we can copy this all as an array. This is quick shitcoding.
+                      copyCSS($target, $field, [
+                        // "font", // in Chrome this could be enough w/o Family and Weight. In FireFox we should copy each value.
+                        "fontSize",
+                        "fontFamily",
+                        "fontWeight",
+
+                        "lineHeight",
+                        "letterSpacing",
+                        "textAlign",
+                        "textTransform",
+                        "wordSpacing", // odd?
+                        "textSizeAdjust", // odd?
+                        // "textIndent", // it acts like left padding. We need it only for calculator but not for overlay. We display the suggested text together with primary text, without extra-intendation.
+
+                        "cursor", // for sure that overlay has exactly the same cursor (if the $field using custom cursor)
+                        ]);
+                    },
+
+                    textAlign = $field.css("textAlign");
 
                 if (textAlign != "left" && textAlign != "start") {
                   me.restoreAlign = textAlign;
                   $field.css("textAlign", "left");
                 }
 
-                me.watchCSS();
+                // copy styles only onFOCUS! We need paddings/margins of FOCUSED control only!
+                copyFont(me.$calcText);
+                copyFont(me.$suggOverlay);
+
+                me.$suggOverlay.css("visibility", "visible");
               }, me));
 
       // touchstart jquery 1.7+
       me.$suggOverlay.on("mousedown touchstart", $.proxy(me.autocomplete, me));
-    },
-
-    watchCSS: function() { // watch for changes in styling and update if required
-      var me = this;
-
-      // calculator
-      me.copyFont(me.$calcText); // We require the font
-      me.copySizing(me.$calcText); // But not sure about the sizing. Need more tests at spare time.
-//      copyCSS(me.$calcText, me.$field, "textIndent"); // textIndent applied separately only for the calculator
-
-      // wrapper of the overlay
-      me.copySizing(me.$suggWrapper); // only sizing. No need to setup the Font
-      copyCSS(me.$suggWrapper, "transparent", "borderColor"); // we need to reset borderColor each type after copySizing(). Border dimensions have individual settings.
-
-      // overlay
-      me.copyFont(me.$suggOverlay); // only FONT. All paddings-margins is 0.
-    },
-
-    copySizing: function($target) {
-      // AK TODO: we can copy this all as an array. This is quick shitcoding.
-      copyCSS($target, this.$field, [
-          "box-sizing", //"content-box" originally
-
-//          "padding", // in Chrome this could be enough w/o all dimensions. In FireFox we should copy each value.
-          "paddingTop",
-          "paddingRight",
-          "paddingBottom",
-          "paddingLeft",
-
-//          "margin",
-          "marginTop",
-          "marginRight",
-          "marginBottom",
-          "marginLeft",
-
-//          "border",
-          "borderTop",
-          "borderRight",
-          "borderBottom",
-          "borderLeft",
-        ]);
-    },
-
-    copyFont: function($target) {
-      // AK TODO: we can copy this all as an array. This is quick shitcoding.
-      copyCSS($target, this.$field, [
-           // "font", // in Chrome this could be enough w/o Family and Weight. In FireFox we should copy each value.
-           "fontSize",
-           "fontFamily",
-           "fontWeight",
-
-           "lineHeight",
-           "letterSpacing",
-           "textAlign",
-           "textTransform",
-           "wordSpacing", // odd?
-           "textSizeAdjust", // odd?
-           // "textIndent", // it acts like left padding. Applies separately for the "calculator" only.
-         ]);
     },
 
     suggest: function(str) {
@@ -366,13 +332,11 @@
      * Displays the suggestion, handler for field keyup event
      */
     displaySuggestion: function(e) {
-      var me = this;
+      var me = this,
+          $field = me.$field;
 
       // Both val & suggestion will be reused in autocomplete()
-      me.val = me.$field.val();
-      me.suggestion = me.suggest(me.val);
-
-      if (me.suggestion)
+      if (me.suggestion = me.suggest(me.val = $field.val()))
         e.preventDefault();
 
       //update with new suggestion
@@ -380,14 +344,40 @@
       me.$calcText.text(me.val);
 
       // find width of current input val so we can offset the suggestion text
-      var cvalWidth = me.$calcText.width(); // calculated width of suggested text. (AFTER SETTING THE TEXT!)
-      if (me.$field.outerWidth() > cvalWidth) {
-        // TODO: try to calculate position when text in e <input> is horizontall centered!
-        //me.$calcText.width(me.$field.width());
+      var cvalWidth = parseInt(me.$calcText.width()); // calculated width of suggested text. (AFTER SETTING THE TEXT!)
 
-        me.$suggWrapper.css("top", me.$field.position().top + me.options.topShift); // extra shift is wrong, but it may help to tweak shifting to look better in some cases
-        me.$suggWrapper.css("left", me.$field.position().left + cvalWidth + me.options.leftShift); // 1px horizontal shift looks even better than no shift, so you may add it.
-        me.$suggWrapper.height(me.$field.height());
+      if ($field.outerWidth() > cvalWidth) {
+
+        // TODO: try to calculate position when text inside of the <input> is horizontally centered! (text-align: center)
+        //me.$calcText.width($field.width());
+
+        var fieldPos = $field.position(),
+            fieldHeight = $field.outerHeight(),
+            calcHeight = me.$calcText.height(), // same as $calcText.outerHeight(), because there is no paddings/borders
+
+            mt = int0($field.css("marginTop")),
+            // left padding
+            sumL = int0($field.css("marginLeft")) +
+                   int0($field.css("paddingLeft")) +
+                   int0($field.css("borderLeftWidth")) +
+                   int0($field.css("textIndent"));
+
+        me.$suggOverlay.css("top",
+            // AK: unlike "left" positioning no need to ceil() it. Let browser decide how to round() it.
+              fieldPos.top + mt +
+              ((fieldHeight - calcHeight) / 2) +
+              me.options.topShift // extra shift is wrong, but it may help to tweak shifting to look better in some cases
+          );
+
+        me.$suggOverlay.css("left",
+           Math.ceil( // in horizontal positioning extra-gap is always better than overlapped text. So always CEIL horizontal position.
+              fieldPos.left + sumL +
+              cvalWidth +
+              me.options.leftShift
+            )
+          );
+
+        me.$suggOverlay.height(me.$calcText.height()); // same as $calcText.outerHeight(), because there is no paddings/borders
       }
     },
 
@@ -396,15 +386,15 @@
       if (me.suggestion) {
         me.$field.val(me.val + me.suggestion);
         me.$suggOverlay.text("");
-        me.$calcText.text("");
+        // me.$calcText.text("");
       }
     },
   };
 
   $.fn[pluginName] = function(options) {
     return this.each(function() {
-      if (!$.data(this, "yz_" + pluginName)) {
-        $.data(this, "yz_" + pluginName, new emailAutocomplete(this, options));
+      if (!$.data(this, pluginName)) { // avoid double initializaton
+        $.data(this, pluginName, new emailAutocomplete(this, options));
       }
     });
   };
@@ -412,11 +402,12 @@
 })(jQuery, window, document);
 
 
-/*
 doInit(function() { // make autocompleable all emails on page
   if (typeof $ == "undefined") return 1;
+  $('input[type="email"], input.email-autocomplete').emailautocomplete(); // .email-autocomplete class should be specified in type="text" fields. Eg in sign-in forms, for fields to provide either username or email.
+  /* or
   $('input[type="email"], input.email-autocomplete').each(function() { // .email-autocomplete class should be specified in type="text" fields. Eg sign-in forms, field to provide either username or email.
     $(this).emailautocomplete(); // { domains: ["example.com"] });
   });
+  */
 }, 1);
-*/
