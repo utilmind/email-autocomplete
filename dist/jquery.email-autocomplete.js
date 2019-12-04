@@ -8,8 +8,9 @@
  *
  *
  *  AK NOTES:
- *    1. this code seems doesn't works on IE (but works on Edge). So it's only for Mozilla-type browsers.
- *    2. since it doesn't works on IE anyway, I have dropped support of legacy functionality. ECMAScript 5 (released in 2009) required to run this code.
+ *    1. It works in all modern browsers, including Internet Explorer 11. (Didn't tested it with older IE's.)
+ *    2. I have dropped support of legacy functionality. ECMAScript 5 (released in 2009) required to run this code.
+ *       See Array.indexOf(), Array.isArray(), Array.forEach() etc. I could rewrite it with legacy code, but don't want to do this.
  *
  */
 (function($, window, document, undefined) {
@@ -20,7 +21,7 @@
         suggClass: "", // "eac-sugg", // AK original classname, but I prefer to use just simple color
         suggColor: "#ccc", // used if suggClass not specified
         topShift: 0, // px. Extra-shift is wrong, but may help to tweak vertical shifting in some special cases. Unfortunately exact visible position of the text indide <input> and <div> can be different be shifted due to roundings.
-        leftShift: 0, // px. AK: personally I prefer 1 extra-pixel between typed text and suggested. But you may set it to 0, so no gaps will be visbibe.
+        leftShift: 1, // px. AK: personally I prefer 1 extra-pixel between typed text and suggested. But you may set it to 0, so no gaps will be visible.
         browserHacks: 1, // Edge requires 1 extra horizontal pixel for unknown reason.
         domains: [], // add custom domains here
         defDomains: [ // you may override default domains setting up the "defDomains".
