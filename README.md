@@ -10,8 +10,6 @@ Fixes are following:
   4. Many other improvements.
   
 <b>Live demo on JSFiddle: https://jsfiddle.net/utilmind/ytxLh4z3/</b>
-
-<h3>UPD 8.12.2019. This code was nice, but will not improved anymore. Use https://twitter.github.io/typeahead.js/ for future projects.</h3>
   
 Original description was following:
 
