@@ -1,6 +1,6 @@
 # jquery.email-autocomplete.js
 
-This is forked & modified code by Aleksey Kuznietsov (aka UtilMind) 29.11.2019.
+This is forked & modified code by Aleksey Kuznietsov (aka UtilMind) 29.11.2019 — 3.12.2019.
 
 Fixes are following:
   1. Advanced list of email domains. Fits most common free email providers in USA + all Ukrainian/Russian services + some European.
@@ -10,6 +10,8 @@ Fixes are following:
   4. Many other improvements.
   
 <b>Live demo on JSFiddle: https://jsfiddle.net/utilmind/ytxLh4z3/</b>
+
+<h3>UPD 8.12.2019. This code was nice, but will not improved anymore. Use https://twitter.github.io/typeahead.js/ for future projects.</h3>
   
 Original description was following:
 
