@@ -1,10 +1,10 @@
 /*
- *  email-autocomplete - 0.2.1 (forked from original code by by Low Yong Zhen  v0.1.3)
+ *  email-autocomplete - 0.2.2 (forked from original code by by Low Yong Zhen  v0.1.3)
  *  jQuery plugin that displays in-place autocomplete suggestions for email input fields.
  *
  *
  *  Made by Low Yong Zhen <yz@stargate.io>
- *  Modified by Aleksey Kuznietsov <utilmind@gmail> 29.11.2019 -- 02.12.2019.
+ *  Modified by Aleksey Kuznietsov <utilmind@gmail> 29.11.2019 -- 17.12.2019.
  *
  *
  *  AK NOTES:
@@ -18,8 +18,8 @@
 
   var pluginName = "emailautocomplete",
       defaults = {
-        suggClass: "", // "eac-sugg", // AK original classname, but I prefer to use just simple color
-        suggColor: "#ccc", // used if suggClass not specified
+        suggClass: "tt-hint", // "eac-sugg", // AK original classname, but I prefer to use just simple color
+        suggColor: "", // "#bbb", // used if suggClass not specified
         topShift: 0, // px. Extra-shift is wrong, but may help to tweak vertical shifting in some special cases. Unfortunately exact visible position of the text indide <input> and <div> can be different be shifted due to roundings.
         leftShift: 1, // px. AK: personally I prefer 1 extra-pixel between typed text and suggested. But you may set it to 0, so no gaps will be visible.
         browserHacks: 1, // Edge requires 1 extra horizontal pixel for unknown reason.
@@ -278,14 +278,16 @@
                         // "font", // in Chrome this could be enough w/o Family and Weight. In FireFox we should copy each value.
                         "fontSize",
                         "fontFamily",
+                        "fontStyle",
                         "fontWeight",
+                        "fontVariant",
 
                         "lineHeight",
+                        "wordSpacing",
                         "letterSpacing",
                         "textAlign",
                         "textTransform",
-                        "wordSpacing", // odd?
-                        "textSizeAdjust", // odd?
+                        "textRendering",
                         // "textIndent", // it acts like left padding. We need it only for calculator but not for overlay. We display the suggested text together with primary text, without extra-intendation.
 
                         "cursor", // for sure that overlay has exactly the same cursor (if the $field using custom cursor)
@@ -355,6 +357,7 @@
         var fieldPos = $field.position(),
             fieldHeight = $field.outerHeight(),
             calcHeight = me.$calcText.height(), // same as $calcText.outerHeight(), because there is no paddings/borders
+            overlayLeft,
 
             mt = int0($field.css("marginTop")),
             // left padding
@@ -371,12 +374,15 @@
           );
 
         me.$suggOverlay.css("left",
-           Math.ceil( // in horizontal positioning extra-gap is always better than overlapped text. So always CEIL horizontal position.
+           overlayLeft = Math.ceil( // in horizontal positioning extra-gap is always better than overlapped text. So always CEIL horizontal position.
               fieldPos.left + sumL +
               cvalWidth +
               me.options.leftShift
             )
           );
+
+        // AK 17.12.2019: don't let it to shift out of the $field's bounds. Don't override other controls (buttons) on the right side of the input.
+        me.$suggOverlay.css("width", $field.outerWidth() - int0($field.css("borderRightWidth")) - overlayLeft);
 
         me.$suggOverlay.height(me.$calcText.height()); // same as $calcText.outerHeight(), because there is no paddings/borders
       }
