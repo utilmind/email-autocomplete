@@ -1,10 +1,10 @@
 /*
- *  email-autocomplete - 0.2.2 (forked from original code by by Low Yong Zhen  v0.1.3)
+ *  email-autocomplete - 0.2.3 (forked from original code by by Low Yong Zhen  v0.1.3)
  *  jQuery plugin that displays in-place autocomplete suggestions for email input fields.
  *
  *
  *  Made by Low Yong Zhen <yz@stargate.io>
- *  Modified by Aleksey Kuznietsov <utilmind@gmail> 29.11.2019 -- 17.12.2019.
+ *  Modified by Aleksey Kuznietsov <utilmind@gmail> 29.11.2019 -- 20.12.2019.
  *
  *
  *  AK NOTES:
@@ -186,6 +186,13 @@
       if ($(targetEl).css(styleName) != sourceElOrVal) // maybe this is odd? need research
         $(targetEl).css(styleName, sourceElOrVal);
     }
+  }
+
+  // we already have int0() in utilmind's commons.js, however this script can be loaded before commons. Let's make it little bit more independant.
+  function int0(v) { // same as parseInt, but returns 0 if parseInt returns non-numerical value
+    if (isNaN(v = parseInt(v)))
+      v = 0;
+    return v;
   }
 
   function emailAutocomplete(elem, options) {
