@@ -188,9 +188,9 @@
     }
   }
 
-  // we already have int0() in utilmind's commons.js, however this script can be loaded before commons. Let's make it little bit more independant.
-  function int0(v) { // same as parseInt, but returns 0 if parseInt returns non-numerical value
-    if (isNaN(v = parseInt(v)))
+  // we already have fl0at() in utilmind's commons.js, however this script can be loaded before commons. Let's make it little bit more independant.
+  function fl0at(v) { // same as parseFloat, but returns 0 if parseInt returns non-numerical value
+    if (isNaN(v = parseFloat(v)))
       v = 0;
     return v;
   }
@@ -366,12 +366,12 @@
             calcHeight = me.$calcText.height(), // same as $calcText.outerHeight(), because there is no paddings/borders
             overlayLeft,
 
-            mt = int0($field.css("marginTop")),
+            mt = fl0at($field.css("marginTop")),
             // left padding
-            sumL = int0($field.css("marginLeft")) +
-                   int0($field.css("paddingLeft")) +
-                   int0($field.css("borderLeftWidth")) +
-                   int0($field.css("textIndent"));
+            sumL = fl0at($field.css("marginLeft")) +
+                   fl0at($field.css("paddingLeft")) +
+                   fl0at($field.css("borderLeftWidth")) +
+                   fl0at($field.css("textIndent"));
 
         me.$suggOverlay.css("top",
             // AK: unlike "left" positioning no need to ceil() it. Let browser decide how to round() it.
@@ -389,7 +389,7 @@
           );
 
         // AK 17.12.2019: don't let it to shift out of the $field's bounds. Don't override other controls (buttons) on the right side of the input.
-        me.$suggOverlay.css("width", $field.outerWidth() - int0($field.css("borderRightWidth")) - overlayLeft);
+        me.$suggOverlay.css("width", $field.outerWidth() - fl0at($field.css("borderRightWidth")) - overlayLeft);
 
         me.$suggOverlay.height(me.$calcText.height()); // same as $calcText.outerHeight(), because there is no paddings/borders
       }
