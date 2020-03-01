@@ -1,10 +1,10 @@
 /*
- *  email-autocomplete - 0.2.3 (forked from original code by by Low Yong Zhen  v0.1.3)
+ *  email-autocomplete - 0.2.4 (forked from original code by by Low Yong Zhen  v0.1.3)
  *  jQuery plugin that displays in-place autocomplete suggestions for email input fields.
  *
  *
  *  Made by Low Yong Zhen <yz@stargate.io>
- *  Modified by Aleksey Kuznietsov <utilmind@gmail> 29.11.2019 -- 20.12.2019.
+ *  Modified by Aleksey Kuznietsov <utilmind@gmail> 29.11.2019 -- 24.01.2020.
  *
  *
  *  AK NOTES:
@@ -13,15 +13,15 @@
  *       See Array.indexOf(), Array.isArray(), Array.forEach() etc. I could rewrite it with legacy code, but don't want to do this.
  *
  */
+
 (function($, window, document, undefined) {
   "use strict";
 
   var pluginName = "emailautocomplete",
       defaults = {
-        suggClass: "tt-hint", // "eac-sugg", // AK original classname, but I prefer to use just simple color
-        suggColor: "", // "#bbb", // used if suggClass not specified
+        suggClass: "tt-hint", // "eac-sugg", // AK original classname, but I prefer to use just simple color. Some time ago here was "suggColor", but inline styles are unsafe for CSP, so let's use only class.
         topShift: 0, // px. Extra-shift is wrong, but may help to tweak vertical shifting in some special cases. Unfortunately exact visible position of the text indide <input> and <div> can be different be shifted due to roundings.
-        leftShift: 1, // px. AK: personally I prefer 1 extra-pixel between typed text and suggested. But you may set it to 0, so no gaps will be visible.
+        leftShift: 0, // px. AK: personally I prefer 1 extra-pixel between typed text and suggested. But you may set it to 0, so no gaps will be visible. AK 24.01.2020: I like 0.
         browserHacks: 1, // Edge requires 1 extra horizontal pixel for unknown reason.
         domains: [], // add custom domains here
         defDomains: [ // you may override default domains setting up the "defDomains".
@@ -188,10 +188,10 @@
     }
   }
 
-  // we already have fl0at() in utilmind's commons.js, however this script can be loaded before commons. Let's make it little bit more independant.
-  function fl0at(v) { // same as parseFloat, but returns 0 if parseInt returns non-numerical value
+  // we already have fl0at() in utilmind's commons.js, but this script can be loaded before commons. Let's make it little bit more independant.
+  function fl0at(v, def) { // same as parseFloat, but returns 0 if parseFloat returns non-numerical value
     if (isNaN(v = parseFloat(v)))
-      v = 0;
+      v = def || 0;
     return v;
   }
 
@@ -215,7 +215,45 @@
   emailAutocomplete.prototype = {
     init: function() {
       var me = this,
-          $field = me.$field;
+          $field = me.$field,
+
+          // AK: the craziest CSS's can modify the padding on focused controls. We must watch them.
+          applyFocusedStyles = function() {
+            var copyFont = function($target) {
+                      // AK TODO: we can copy this all as an array. This is quick shitcoding.
+                  copyCSS($target, $field, [
+                    // "font", // in Chrome this could be enough w/o Family and Weight. In FireFox we should copy each value.
+                    "fontSize",
+                    "fontFamily",
+                    "fontStyle",
+                    "fontWeight",
+                    "fontVariant",
+
+                    "lineHeight",
+                    "wordSpacing",
+                    "letterSpacing",
+                    "textAlign",
+                    "textTransform",
+                    "textRendering",
+                    // "textIndent", // it acts like left padding. We need it only for calculator but not for overlay. We display the suggested text together with primary text, without extra-intendation.
+
+                    "cursor", // for sure that overlay has exactly the same cursor (if the $field using custom cursor)
+                    ]);
+                },
+
+                textAlign = $field.css("textAlign");
+
+            if (textAlign != "left" && textAlign != "start") {
+              me.restoreAlign = textAlign;
+              $field.css("textAlign", "left");
+            }
+
+            // copy styles only onFOCUS! We need paddings/margins of FOCUSED control only!
+            copyFont(me.$calcText);
+            copyFont(me.$suggOverlay);
+
+            me.$suggOverlay.css("visibility", "visible");
+          };
 
       // capitalized emails looking TOTALLY weird when capitalized text torns apart, like Name@GmAil.Com etc. First character of suggested part will be capitalized too, and it's wrong.
       // And we will not respect unfocused capitalization too. First words in emails should never be capitaized.
@@ -234,7 +272,7 @@
       }).insertAfter($field);
 
       // Create the suggestion overlay.
-      me.$suggOverlay = $("<span "+(me.options.suggClass ? 'class="' + me.options.suggClass : 'style="color:'+me.options.suggColor) + '" />').css({ // AK 29.11.2019
+      me.$suggOverlay = $("<span "+(me.options.suggClass ? 'class="' + me.options.suggClass : "") + '" />').css({ // AK 29.11.2019. Since 29.02.2020 without CSP unsafe suggColor. Use only classes to style it!
         position: "absolute",
         display: "block",
         top: 0,
@@ -248,6 +286,10 @@
         // backgroundColor: "yellow",
         // opacity: 0.8,
       }).insertAfter($field);
+
+      // if already focued -- apply styles immediately. Regular onFocus will not be triggered.
+      if ($field.is(":focus"))
+        applyFocusedStyles();
 
       // bind events and handlers
       $field.keyup($.proxy(me.displaySuggestion, me))
@@ -278,42 +320,7 @@
             // AK: the craziest CSS's can modify the padding on focused controls. We must watch them.
             //     I'm adding the watching for the focused elements, but keep in mind, that there is a lot more pseudo-classes,
             //     which can completely change the look of the control, eg :hover, :enabled/:disabled, :read-only, :default, :required, :fullscreen, :valid/:invalid and so forth.
-            .focus($.proxy(function(e) {
-                var copyFont = function($target) {
-                      // AK TODO: we can copy this all as an array. This is quick shitcoding.
-                      copyCSS($target, $field, [
-                        // "font", // in Chrome this could be enough w/o Family and Weight. In FireFox we should copy each value.
-                        "fontSize",
-                        "fontFamily",
-                        "fontStyle",
-                        "fontWeight",
-                        "fontVariant",
-
-                        "lineHeight",
-                        "wordSpacing",
-                        "letterSpacing",
-                        "textAlign",
-                        "textTransform",
-                        "textRendering",
-                        // "textIndent", // it acts like left padding. We need it only for calculator but not for overlay. We display the suggested text together with primary text, without extra-intendation.
-
-                        "cursor", // for sure that overlay has exactly the same cursor (if the $field using custom cursor)
-                        ]);
-                    },
-
-                    textAlign = $field.css("textAlign");
-
-                if (textAlign != "left" && textAlign != "start") {
-                  me.restoreAlign = textAlign;
-                  $field.css("textAlign", "left");
-                }
-
-                // copy styles only onFOCUS! We need paddings/margins of FOCUSED control only!
-                copyFont(me.$calcText);
-                copyFont(me.$suggOverlay);
-
-                me.$suggOverlay.css("visibility", "visible");
-              }, me));
+            .focus($.proxy(applyFocusedStyles, me));
 
       // touchstart jquery 1.7+
       me.$suggOverlay.on("mousedown touchstart", $.proxy(me.autocomplete, me));
@@ -425,3 +432,16 @@ doInit(function() { // make autocompleable all emails on page
   });
   */
 }, 1);
+
+/*
+    Sometimes I have troubles with initialization inside of the legacy Yahoo YUI dialogs.
+    (Not everywhere. It works great with contact editor, but does not works on requesting required fields after incomplete registration on FAVOR.com.ua)
+
+    But if you any have troubles, you need force initialization after first render() of the dialog.
+    Example:
+
+      YAHOO.example.container.reqflddlg.render()
+
+      $("#reqflddlg").css("display","")
+         .find('input[type="email"]').emailautocomplete();
+*/
