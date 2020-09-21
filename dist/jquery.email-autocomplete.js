@@ -408,6 +408,8 @@
         me.$field.val(me.val + me.suggestion);
         me.$suggOverlay.text("");
         // me.$calcText.text("");
+
+        me.$field.trigger("input"); // AK 21.09.2020. We need it to validate field immediately after auto-completion. It's normal "input". It's okay. No additional events required.
       }
     },
   };
