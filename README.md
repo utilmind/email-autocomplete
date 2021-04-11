@@ -1,5 +1,8 @@
 # jquery.email-autocomplete.js
 
+UPD. visual improvements 10.04.2021, v0.3
+<hr />
+
 This is forked & modified code by Aleksey Kuznietsov (aka UtilMind) 29.11.2019 — 3.12.2019.
 
 Fixes are following:
