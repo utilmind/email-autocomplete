@@ -1,10 +1,10 @@
 /*
- *  email-autocomplete - 0.2.4 (forked from original code by by Low Yong Zhen  v0.1.3)
+ *  email-autocomplete - 0.3 (forked from original code by by Low Yong Zhen  v0.1.3)
  *  jQuery plugin that displays in-place autocomplete suggestions for email input fields.
  *
  *
  *  Made by Low Yong Zhen <yz@stargate.io>
- *  Modified by Aleksey Kuznietsov <utilmind@gmail> 29.11.2019 -- 24.01.2020.
+ *  Modified by Aleksey Kuznietsov <utilmind@gmail> 29.11.2019 — 24.01.2020, 10.04.2021 (v0.3).
  *
  *
  *  AK NOTES:
@@ -13,16 +13,12 @@
  *       See Array.indexOf(), Array.isArray(), Array.forEach() etc. I could rewrite it with legacy code, but don't want to do this.
  *
  */
-
 (function($, window, document, undefined) {
   "use strict";
 
   var pluginName = "emailautocomplete",
       defaults = {
         suggClass: "tt-hint", // "eac-sugg", // AK original classname, but I prefer to use just simple color. Some time ago here was "suggColor", but inline styles are unsafe for CSP, so let's use only class.
-        topShift: 0, // px. Extra-shift is wrong, but may help to tweak vertical shifting in some special cases. Unfortunately exact visible position of the text indide <input> and <div> can be different be shifted due to roundings.
-        leftShift: 0, // px. AK: personally I prefer 1 extra-pixel between typed text and suggested. But you may set it to 0, so no gaps will be visible. AK 24.01.2020: I like 0.
-        browserHacks: 1, // Edge requires 1 extra horizontal pixel for unknown reason.
         domains: [], // add custom domains here
         defDomains: [ // you may override default domains setting up the "defDomains".
           "gmail.com",
@@ -174,42 +170,43 @@
 
   // AK: it's good enough to be canonized somewhere separately
   function copyCSS(targetEl, sourceElOrVal, styleName) {
-    if (Array.isArray(styleName)) {
-      styleName.forEach(function(style) {
-        copyCSS(targetEl, sourceElOrVal, style); // recursion!
-      });
+      if (Array.isArray(styleName)) {
+          styleName.forEach(function(style) {
+              copyCSS(targetEl, sourceElOrVal, style); // recursion!
+          });
 
-    }else {
-      if (typeof sourceElOrVal == "object")
-        sourceElOrVal = $(sourceElOrVal).css(styleName);
+      }else {
+          if ("object" === typeof sourceElOrVal)
+              sourceElOrVal = $(sourceElOrVal).css(styleName);
 
-      if ($(targetEl).css(styleName) != sourceElOrVal) // maybe this is odd? need research
-        $(targetEl).css(styleName, sourceElOrVal);
-    }
+          if ($(targetEl).css(styleName) !== sourceElOrVal) // maybe this is odd? need research
+              $(targetEl).css(styleName, sourceElOrVal);
+      }
   }
 
-  // we already have fl0at() in utilmind's commons.js, but this script can be loaded before commons. Let's make it little bit more independant.
+  // we already have fl0at() in utilmind's commons.js, but this script could be loaded before commons. Let's make it little bit more independant.
   function fl0at(v, def) { // same as parseFloat, but returns 0 if parseFloat returns non-numerical value
-    if (isNaN(v = parseFloat(v)))
-      v = def || 0;
-    return v;
+      return isNaN(v = parseFloat(v))
+          ? def || 0
+          : v;
   }
 
-  function emailAutocomplete(elem, options) {
-    var me = this;
+  function emailAutocomplete(input, options) {
+      var me = this,
+          $field = me.$field = $(input),
+          inputDomains = $field.data("domains");
 
-    me.$field = $(elem);
-    me.options = $.extend(true, {}, defaults, options); // we want deep extend
-    me._domains = me.options.domains.concat(me.options.defDomains); // merge 2 arrays with domains, default and custom lists
+      me.options = $.extend({}, defaults, options);
 
-    if (me.options.browserHacks) {
-      var userAgent = navigator.userAgent.toLowerCase();
+      inputDomains = inputDomains
+          ? inputDomains.split(",").map(function(s) { return s.trim(); }) // trim all domains
+          : [];
 
-      if (userAgent.indexOf("edge") > 0) // Edge need +1 or +2px extra from left. Reason of such behavior not researched.
-        me.options.leftShift+= 2;
-    }
+      me._domains = me.options.domains
+          .concat(inputDomains,
+                  me.options.defDomains); // arrays with domains, default + 2nd priority default and custom lists
 
-    me.init();
+      me.init();
   }
 
   emailAutocomplete.prototype = {
@@ -243,9 +240,9 @@
 
                 textAlign = $field.css("textAlign");
 
-            if (textAlign != "left" && textAlign != "start") {
-              me.restoreAlign = textAlign;
-              $field.css("textAlign", "left");
+            if ("left" !== textAlign && "start" !== textAlign) {
+                me.restoreAlign = textAlign;
+                $field.css("textAlign", "left");
             }
 
             // copy styles only onFOCUS! We need paddings/margins of FOCUSED control only!
@@ -257,8 +254,8 @@
 
       // capitalized emails looking TOTALLY weird when capitalized text torns apart, like Name@GmAil.Com etc. First character of suggested part will be capitalized too, and it's wrong.
       // And we will not respect unfocused capitalization too. First words in emails should never be capitaized.
-      if ($field.css("textTransform") == "capitalize")
-        $field.css("textTransform", "lowercase");
+      if ("capitalize" === $field.css("textTransform"))
+          $field.css("textTransform", "lowercase");
 
       // create container to test width of current val
       me.$calcText = $("<span />").css({
@@ -272,15 +269,17 @@
       }).insertAfter($field);
 
       // Create the suggestion overlay.
-      me.$suggOverlay = $("<span "+(me.options.suggClass ? 'class="' + me.options.suggClass : "") + '" />').css({ // AK 29.11.2019. Since 29.02.2020 without CSP unsafe suggColor. Use only classes to style it!
+      me.$suggOverlay = $("<input "+(me.options.suggClass ? 'class="' + me.options.suggClass : "") + '" />').css({ // AK 29.11.2019. Since 29.02.2020 without CSP unsafe suggColor. Use only classes to style it!
         position: "absolute",
         display: "block",
+        background: "transparent",
         top: 0,
         left: 0,
         margin: 0,
         padding: 0,
         border: 0,
         zIndex: 9999,
+        overflow: "hidden",
 
         // ...uncomment code below to debug...
         // backgroundColor: "yellow",
@@ -292,13 +291,13 @@
         applyFocusedStyles();
 
       // bind events and handlers
-      $field.keyup($.proxy(me.displaySuggestion, me))
+      $field.on("keyup", $.proxy(me.displaySuggestion, me))
 
-            .keydown($.proxy(function(e) {
+            .on("keydown", $.proxy(function(e) {
                 if (me.suggestion) {
                   var key = e.keyCode || e.which;
-                  if (((key > 37) && (key < 41)) || (key == 9) || (key == 13)) { // top-right-bottom & tab
-                    if (key == 13) {
+                  if (((37 < key) && (41 > key)) || (9 === key) || (13 === key)) { // top-right-bottom & tab
+                    if (13 === key) {
                       e.stopPropagation();
                       e.preventDefault();
                     }
@@ -307,10 +306,10 @@
                 }
               }, me))
 
-            .blur($.proxy(function(e) {
+            .on("blur", $.proxy(function(e) {
                 if (me.restoreAlign) {
-                  $field.css("textAlign", me.restoreAlign);
-                  me.restoreAlign = null;
+                    $field.css("textAlign", me.restoreAlign);
+                    me.restoreAlign = null;
                 }
 
                 me.$suggOverlay.css("visibility", "hidden");
@@ -320,119 +319,100 @@
             // AK: the craziest CSS's can modify the padding on focused controls. We must watch them.
             //     I'm adding the watching for the focused elements, but keep in mind, that there is a lot more pseudo-classes,
             //     which can completely change the look of the control, eg :hover, :enabled/:disabled, :read-only, :default, :required, :fullscreen, :valid/:invalid and so forth.
-            .focus($.proxy(applyFocusedStyles, me));
+            .on("focus", $.proxy(applyFocusedStyles, me));
 
       // touchstart jquery 1.7+
       me.$suggOverlay.on("mousedown touchstart", $.proxy(me.autocomplete, me));
     },
 
     suggest: function(str) {
-      var strArr = str.split("@");
-      if (strArr.length > 1) {
-        str = strArr.pop();
-        if (!str.length) {
-          return "";
+        var strArr = str.split("@");
+        if (1 < strArr.length) {
+            str = strArr.pop();
+            if (!str.length) {
+                return "";
+            }
+        }else {
+            return "";
         }
-      }else {
-        return "";
-      }
 
-      str = str.toLowerCase();
-      var match = this._domains.filter(function(domain) {
-        return domain.indexOf(str) === 0;
-      }).shift() || "";
+        str = str.toLowerCase();
+        var match = this._domains.filter(function(domain) {
+                return 0 === domain.indexOf(str);
+            }).shift() || "";
 
-      return match.replace(str, "");
+        return match.replace(str, "");
     },
 
     /**
      * Displays the suggestion, handler for field keyup event
      */
     displaySuggestion: function(e) {
-      var me = this,
-          $field = me.$field;
+        var me = this,
+            $field = me.$field,
+            $sugg = me.$suggOverlay,
+            $calc = me.$calcText,
+            fieldPos = $field.position();
 
-      // Both val & suggestion will be reused in autocomplete()
-      if (me.suggestion = me.suggest(me.val = $field.val()))
-        e.preventDefault();
+        // Both val & suggestion will be reused in autocomplete()
+        if (me.suggestion = me.suggest(me.val = $field.val()))
+            e.preventDefault();
 
-      //update with new suggestion
-      me.$suggOverlay.text(me.suggestion);
-      me.$calcText.text(me.val);
+        copyCSS($sugg, $field, [ "width", "height" /*, "padding", "border"*/ ]); // for some reason "padding" and border doesn't work properly on Firefox. We should calculate position in other way.
+        // $sugg.css("borderColor", "transparent");
 
-      // find width of current input val so we can offset the suggestion text
-      var cvalWidth = parseInt(me.$calcText.width()); // calculated width of suggested text. (AFTER SETTING THE TEXT!)
+        // update suggested text
+        $calc.text(me.val);
+        $sugg.val(me.suggestion);
 
-      if ($field.outerWidth() > cvalWidth) {
+        $sugg.css("top",
+            fieldPos.top +
+            fl0at($field.css("marginTop"))
+            //fl0at($field.css("borderTopWidth")) +
+            //fl0at($field.css("paddingTop"))
+        );
 
-        // TODO: try to calculate position when text inside of the <input> is horizontally centered! (text-align: center)
-        //me.$calcText.width($field.width());
-
-        var fieldPos = $field.position(),
-            fieldHeight = $field.outerHeight(),
-            calcHeight = me.$calcText.height(), // same as $calcText.outerHeight(), because there is no paddings/borders
-            overlayLeft,
-
-            mt = fl0at($field.css("marginTop")),
-            // left padding
-            sumL = fl0at($field.css("marginLeft")) +
-                   fl0at($field.css("paddingLeft")) +
-                   fl0at($field.css("borderLeftWidth")) +
-                   fl0at($field.css("textIndent"));
-
-        me.$suggOverlay.css("top",
-            // AK: unlike "left" positioning no need to ceil() it. Let browser decide how to round() it.
-              fieldPos.top + mt +
-              ((fieldHeight - calcHeight) / 2) +
-              me.options.topShift // extra shift is wrong, but it may help to tweak shifting to look better in some cases
-          );
-
-        me.$suggOverlay.css("left",
-           overlayLeft = Math.ceil( // in horizontal positioning extra-gap is always better than overlapped text. So always CEIL horizontal position.
-              fieldPos.left + sumL +
-              cvalWidth +
-              me.options.leftShift
-            )
-          );
-
-        // AK 17.12.2019: don't let it to shift out of the $field's bounds. Don't override other controls (buttons) on the right side of the input.
-        me.$suggOverlay.css("width", $field.outerWidth() - fl0at($field.css("borderRightWidth")) - overlayLeft);
-
-        me.$suggOverlay.height(me.$calcText.height()); // same as $calcText.outerHeight(), because there is no paddings/borders
-      }
+        $sugg.css("left",
+            fieldPos.left +
+            fl0at($field.css("marginLeft")) +
+            fl0at($field.css("borderLeftWidth")) +
+            fl0at($field.css("paddingLeft")) +
+            fl0at($field.css("textIndent")) +
+            $calc.width()
+        );
     },
 
     autocomplete: function() {
-      var me = this;
-      if (me.suggestion) {
-        me.$field.val(me.val + me.suggestion);
-        me.$suggOverlay.text("");
-        // me.$calcText.text("");
+        var me = this;
+        if (me.suggestion) {
+            me.$field.val(me.val + me.suggestion);
+            me.$suggOverlay.text("");
+            // me.$calcText.text("");
 
-        me.$field.trigger("input"); // AK 21.09.2020. We need it to validate field immediately after auto-completion. It's normal "input". It's okay. No additional events required.
-      }
+            me.$field.trigger("input"); // AK 21.09.2020. We need it to validate field immediately after auto-completion. It's normal "input". It's okay. No additional events required.
+        }
     },
   };
 
   $.fn[pluginName] = function(options) {
-    return this.each(function() {
-      if (!$.data(this, pluginName)) { // avoid double initializaton
-        $.data(this, pluginName, new emailAutocomplete(this, options));
-      }
-    });
+      return this.each(function() {
+          if (!$.data(this, pluginName)) { // avoid double initializaton
+              $.data(this, pluginName, new emailAutocomplete(this, options));
+          }
+      });
   };
 
 })(jQuery, window, document);
 
 
 doInit(function() { // make autocompleable all emails on page
-  if (typeof $ == "undefined") return 1;
-  $('input[type="email"], input.email-autocomplete').emailautocomplete(); // .email-autocomplete class should be specified in type="text" fields. Eg in sign-in forms, for fields to provide either username or email.
-  /* or
-  $('input[type="email"], input.email-autocomplete').each(function() { // .email-autocomplete class should be specified in type="text" fields. Eg sign-in forms, field to provide either username or email.
-    $(this).emailautocomplete(); // { domains: ["example.com"] });
-  });
-  */
+    if ("undefined" === typeof $) return 1;
+    $('input[type="email"], input.email-autocomplete').emailautocomplete(); // .email-autocomplete class should be specified in type="text" fields. Eg in sign-in forms, for fields to provide either username or email.
+    /* or
+    $('input[type="email"], input.email-autocomplete').each(function() { // .email-autocomplete class should be specified in type="text" fields. Eg sign-in forms, field to provide either username or email.
+        $(this).emailautocomplete(); // { domains: ["example.com"] });
+    });
+    */
 }, 1);
 
 /*
