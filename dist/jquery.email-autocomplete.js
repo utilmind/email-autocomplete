@@ -1,10 +1,10 @@
 /*
- *  email-autocomplete - 0.4.4 (forked from original code by by Low Yong Zhen  v0.1.3)
+ *  email-autocomplete - 0.4.6 (forked from original code by by Low Yong Zhen  v0.1.3)
  *  jQuery plugin that displays in-place autocomplete suggestions for email input fields.
  *
  *
  *  Made by Low Yong Zhen <yz@stargate.io>
- *  Modified by Aleksey Kuznietsov <utilmind@gmail> 29.11.2019 — 24.01.2020, 10.04.2021 (v0.3).
+ *  Modified by Aleksey Kuznietsov <utilmind@gmail> 29.11.2019 - 24.01.2020, 10.04.2021 (v0.3).
  *
  *
  *  AK NOTES:
@@ -16,6 +16,7 @@
  *    * data-complete-onblur="1"		-- auto-completes the suggestion on blur (on switching the input focus out)
  *    * data-domains="domain1.com, domain2.com"	-- allows to specify additional domains for autocompletion. And they have higher priority than default domains.
  *
+ *  Validation of input. Only for input fields with type="email". (Otherwise, if type="text" we can't be 100% certain that non-email value, like "username" is also allowed.)
  *    * data-valid-class="className"		-- automatically validate syntax of entered email and put this class if email IS VALID. Multiple classes allowed, space separated.
  *    * data-invalid-class="className"		-- automatically validate syntax of entered email and put this class if email IS INVALID. Multiple classes allowed, space separated.
  *    * data-valid-show="#element"		-- element id to *show* when email IS VALID (and hide when invalid or unspecified).
@@ -23,6 +24,8 @@
  *
  *    * data-allow-invalid-submit="#element"	-- submission of invalid input usually blocked by the wrapper form. Set it to any TRUE value to allow invalid submissions.
  *    * data-custom-validity="...message..."	-- custom error message about requirement to fix the input before submission.
+ *
+ *    ...If you'd like to skip validation on the form submission, even if the input is invalid, set "ignore-invalid" class to the field.
  *
  *  Events:
  *    * autocomplete(e)			-- triggered after auto-completion. This is additionally to regular "change" event.
@@ -33,13 +36,15 @@
  *
  */
 (function($, window, document, undefined) {
-    "use strict";
+    // "use strict"; // uncomment for development branch
 
     var pluginName = "emailautocomplete",
         defaults = {
             completeOnBlur: false, // or fill an attribute: data-complete-onblur="1"
+
+         // ATTN! These classes work only for <input type="email" />. Otherwise, if regular text (eg usernames) is allowed, we can't know for sure whether the field is invalid.
             validClass: "", // automatically validate syntax of entered email and put this class if email IS VALID. Multiple classes allowed, space separated.
-            invalidClass: "is-invalid", // automatically validate syntax of entered email and put this class if email IS INVALID. Multiple classes allowed, space separated.
+            invalidClass: "is-invalid is-invalid-syntax", // automatically validate syntax of entered email and put this class if email IS INVALID. Multiple classes allowed, space separated.
 
             validityMessage: "This email is obviously invalid. Please fix your input.",
 
@@ -100,6 +105,7 @@
                 "mindspring.com", // earthlink
                 "earthlink.net",  // earthlink
                 "gmx.com",
+                // "index.com", // dead
                 "inbox.com",
                 "inbox.ru",
                 "pobox.com",
@@ -157,7 +163,7 @@
                 "smtp.ru",		// UA-RU
                 "pochta.ru",		// UA-RU
                 "bigmir.net",		// UA
-                "gala.net",		// UA
+                // "gala.net",		// UA. dead
                 "tut.by",		// BY
 
                 "skynet.be",		// BE
@@ -266,6 +272,7 @@
         init: function() {
             var me = this,
                 $field = me.$field,
+                isEmailInput = "email" === $field.prop("type"),
 
                 // AK: the craziest CSS's can modify the padding on focused controls. We must watch them.
                 applyFocusedStyles = function() {
@@ -332,6 +339,7 @@
                     if (invalidShow)
                         $(invalidShow).toggle(isInvalidEmail);
                 };
+
 
             // capitalized emails looking TOTALLY weird when capitalized text torns apart, like Name@GmAil.Com etc. First character of suggested part will be capitalized too, and it's wrong.
             // And we will not respect unfocused capitalization too. First words in emails should never be capitaized.
@@ -406,7 +414,10 @@
                     if (me.$suggOverlay.val())
                         me.$suggOverlay.show();
 
-                }).on("change", validateInput);
+                });
+
+            if (isEmailInput)
+                $field.on("change", validateInput);
 
             // touchstart requires jQuery 1.7+
             me.$suggOverlay.on("mousedown touchstart", function() {
@@ -417,7 +428,8 @@
             // fix existing value
             var val = $field.val();
             if (val) { // if field already have some value
-                validateInput();
+                if (isEmailInput)
+                    validateInput();
                 // if we're focused -- move cursor to the end
                 if ($field.is(":focus"))
                     $field[0].setSelectionRange(val.length, val.length);
@@ -425,14 +437,15 @@
 
 
             // allow submission of invalid input
-            if (!$field.data("allow-invalid-submit")) {
+            if (isEmailInput && !$field.data("allow-invalid-submit")) {
                 // find the wrapper form and hook onSubmit...
                 var $form = $field.closest("form");
                 if ($form.length)
                     $form.on("submit", function(e) {
-                        if (!$field.data("is-valid")) {
+                        if ($field.val() && !$field.data("is-valid") && !$field.hasClass("ignore-invalid")) { // we don't care about empty input. Set "required" to check it.
                             var form = this;
                             e.preventDefault();
+                            e.stopImmediatePropagation(); // block all other "submit" hooks
 
                             $field[0].setCustomValidity($field.data("custom-validity") || me.options.validityMessage);
                             $field.one("change input", function() { // once
